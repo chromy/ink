@@ -40,94 +40,96 @@ namespace Ink
 
 				// Normal: Ask user for choice number
 				else {
-                    
-                    if( !_jsonOutput ) {
-                        Console.ForegroundColor = ConsoleColor.Blue;
 
-                        // Add extra newline to ensure that the choice is
-                        // on a separate line.
-                        Console.WriteLine ();
+            if( !_jsonOutput ) {
+                Console.ForegroundColor = ConsoleColor.Blue;
 
-                        int i = 1;
-                        foreach (Choice choice in choices) {
-                            Console.WriteLine ("{0}: {1}", i, choice.text);
-                            i++;
-                        }
+                // Add extra newline to ensure that the choice is
+                // on a separate line.
+                Console.WriteLine ();
+
+                int i = 1;
+                foreach (Choice choice in choices) {
+                    Console.WriteLine ("{0}: {1}", i, choice.text);
+                    i++;
+                }
+            }
+
+            else {
+                var writer = new Runtime.SimpleJson.Writer();
+                writer.WriteObjectStart();
+                writer.WritePropertyStart("choices");
+                writer.WriteArrayStart();
+                foreach(var choice in choices) {
+                    writer.Write(choice.text);
+                }
+                writer.WriteArrayEnd();
+                writer.WritePropertyEnd();
+                writer.WriteObjectEnd();
+                Console.WriteLine(writer.ToString());
+            }
+
+
+            do {
+                if( !_jsonOutput ) {
+                    // Prompt
+                    Console.Write("?> ");
+                }
+
+                else {
+                    // Johnny Five, he's alive!
+                    Console.Write("{\"needInput\": true}");
+                }
+
+                string userInput = Console.ReadLine ();
+
+                // If we have null user input, it means that we're
+                // "at the end of the stream", or in other words, the input
+                // stream has closed, so there's nothing more we can do.
+                // We return immediately, since otherwise we get into a busy
+                // loop waiting for user input.
+                if (userInput == null) {
+                    if( _jsonOutput ) {
+                        Console.WriteLine ("{\"close\": true}");
+                    } else {
+                        Console.WriteLine ("<User input stream closed.>");
                     }
+                    return;
+                }
 
-                    else {
-                        var writer = new Runtime.SimpleJson.Writer();
-                        writer.WriteObjectStart();
-                        writer.WritePropertyStart("choices");
-                        writer.WriteArrayStart();
-                        foreach(var choice in choices) {
-                            writer.Write(choice.text);
-                        }
-                        writer.WriteArrayEnd();
-                        writer.WritePropertyEnd();
-                        writer.WriteObjectEnd();
-                        Console.WriteLine(writer.ToString());
+                //var result = _compiler.ReadCommandLineInput (userInput);
+                var inputParser = new InkParser(userInput);
+                var inputResult = inputParser.CommandLineUserInput();
+
+                //if (result.output != null) {
+                //    if( _jsonOutput ) {
+                //        var writer = new Runtime.SimpleJson.Writer();
+                //        writer.WriteObjectStart();
+                //        writer.WriteProperty("cmdOutput", result.output);
+                //        writer.WriteObjectEnd();
+                //        Console.WriteLine(writer.ToString());
+                //    } else {
+                //        Console.WriteLine (result.output);
+                //    }
+                //}
+
+                //if (result.requestsExit)
+                //    return;
+
+                //if (result.divertedPath != null)
+                //    userDivertedPath = result.divertedPath;
+
+                if (inputResult.choiceInput != null) {
+                    choiceIdx = ((int)inputResult.choiceInput) - 1;
+                    if (choiceIdx >= choices.Count) {
+                        if( !_jsonOutput ) // fail silently in json mode
+                            Console.WriteLine ("Choice out of range");
+                    } else {
+                        choiceIsValid = true;
                     }
+                }
 
-
-                    do {
-                        if( !_jsonOutput ) {
-                            // Prompt
-                            Console.Write("?> ");
-                        }
-                        
-                        else {
-                            // Johnny Five, he's alive!
-                            Console.Write("{\"needInput\": true}");
-                        }
-
-                        string userInput = Console.ReadLine ();
-
-                        // If we have null user input, it means that we're
-                        // "at the end of the stream", or in other words, the input
-                        // stream has closed, so there's nothing more we can do.
-                        // We return immediately, since otherwise we get into a busy
-                        // loop waiting for user input.
-                        if (userInput == null) {
-                            if( _jsonOutput ) {
-                                Console.WriteLine ("{\"close\": true}");
-                            } else {
-                                Console.WriteLine ("<User input stream closed.>");
-                            }
-                            return;
-                        }
-
-                        var result = _compiler.ReadCommandLineInput (userInput);
-
-                        if (result.output != null) {
-                            if( _jsonOutput ) {
-                                var writer = new Runtime.SimpleJson.Writer();
-                                writer.WriteObjectStart();
-                                writer.WriteProperty("cmdOutput", result.output);
-                                writer.WriteObjectEnd();
-                                Console.WriteLine(writer.ToString());
-                            } else {
-                                Console.WriteLine (result.output);
-                            }
-                        }
-
-                        if (result.requestsExit)
-                            return;
-
-                        if (result.divertedPath != null)
-                            userDivertedPath = result.divertedPath;
-
-                        if (result.choiceIdx >= 0) {
-                            if (result.choiceIdx >= choices.Count) {
-                                if( !_jsonOutput ) // fail silently in json mode
-                                    Console.WriteLine ("Choice out of range");
-                            } else {
-                                choiceIdx = result.choiceIdx;
-                                choiceIsValid = true;
-                            }
-                        }
-
-                    } while(!choiceIsValid && userDivertedPath == null);
+            } while(!choiceIsValid && userDivertedPath == null);
 
 				}
 
@@ -151,7 +153,7 @@ namespace Ink
 
                 story.Continue ();
 
-                _compiler.RetrieveDebugSourceForLatestContent ();
+                //_compiler.RetrieveDebugSourceForLatestContent ();
 
                 if( _jsonOutput ) {
                     var writer = new Runtime.SimpleJson.Writer();
